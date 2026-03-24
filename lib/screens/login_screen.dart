@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/api_service.dart';
+import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 
 const _bgImageUrl =
     'https://images.unsplash.com/photo-1694152362587-99d77d21793b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080';
@@ -51,9 +54,51 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (mounted) setState(() => _isLoading = false);
-    // TODO: navigate to dashboard
+    try {
+      final result = await ApiService.login(
+        emailOrUsername: _emailCtrl.text.trim(),
+        password: _passwordCtrl.text,
+      );
+      if (!mounted) return;
+      if (result['success'] == true) {
+        final token = result['data']?['token'] as String?;
+        if (token != null) await ApiService.saveToken(token);
+        if (!mounted) return;
+        // TODO: navigate to dashboard
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đăng nhập thành công!', style: GoogleFonts.inter(color: Colors.white)),
+            backgroundColor: const Color(0xFF22C55E),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message'] as String? ?? 'Email/Username hoặc mật khẩu không chính xác',
+              style: GoogleFonts.inter(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Không thể kết nối đến server', style: GoogleFonts.inter(color: Colors.white)),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -347,15 +392,17 @@ class _LoginScreenState extends State<LoginScreen>
             ],
           ),
         ),
-        Text(
-          'Forgot?',
-          style: GoogleFonts.inter(
-            color: const Color(0xCCF59E0B),
-            fontSize: 13,
-            fontWeight: FontWeight.w400,
+        GestureDetector(
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordScreen())),
+          child: Text(
+            'Forgot?',
+            style: GoogleFonts.inter(
+              color: const Color(0xCCF59E0B),
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+            ),
           ),
-        ),
-      ],
+        ),      ],
     );
   }
 
@@ -421,13 +468,22 @@ class _LoginScreenState extends State<LoginScreen>
             fontSize: 13,
             fontWeight: FontWeight.w300,
           ),
-          children: const [
-            TextSpan(text: 'Need an account? '),
-            TextSpan(
-              text: 'Contact Admin',
-              style: TextStyle(
-                color: Color(0xFFF59E0B),
-                fontWeight: FontWeight.w400,
+          children: [
+            const TextSpan(text: 'Chưa có tài khoản? '),
+            WidgetSpan(
+              child: GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                ),
+                child: Text(
+                  'Đăng ký ngay',
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFFF59E0B),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
               ),
             ),
           ],
